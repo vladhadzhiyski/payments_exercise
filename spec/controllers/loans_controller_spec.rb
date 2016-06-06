@@ -9,8 +9,25 @@ RSpec.describe LoansController, type: :controller do
   describe '#create_payment' do
 
     describe "success" do
-      it 'creates a payment for an existing loan' do
+      it 'creates a payment for an existing loan with amount less than the funded amount' do
         payment_amount = 20.0
+        params = {
+          id: @loan.id,
+          payment_amount: payment_amount
+        }
+        post :create_payment, params
+        expect(response.status).to eq(200)
+        response_body = JSON.parse(response.body)
+        expect(response_body).to eq({
+          "payment" => {
+            "amount" => payment_amount,
+            "loan_id" => @loan.id
+          }
+        })
+      end
+
+      it 'creates a payment for an existing loan with amount equal to the funded amount' do
+        payment_amount = @loan.funded_amount
         params = {
           id: @loan.id,
           payment_amount: payment_amount
@@ -63,6 +80,19 @@ RSpec.describe LoansController, type: :controller do
         response_body = JSON.parse(response.body)
         expect(response_body).to eq({
           "error" => "Amount is not a number"
+        })
+      end
+
+      it 'returns an error if payment amount exceeds funded amount' do
+        params = {
+          id: @loan.id,
+          payment_amount: (@loan.funded_amount + 1)
+        }
+        post :create_payment, params
+        expect(response.status).to eq(200)
+        response_body = JSON.parse(response.body)
+        expect(response_body).to eq({
+          "error" => "Amount cannot exceed the funded amount"
         })
       end
     end
